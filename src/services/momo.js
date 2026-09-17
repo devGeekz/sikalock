@@ -1,20 +1,39 @@
-const { Collections, Disbursements } = require('mtn-momo');
+const momo = require('mtn-momo');
 const config = require('../config');
 
-const collections = Collections({
-  userSecret: config.momo.collections.userSecret,
-  userId: config.momo.collections.userId,
-  primaryKey: config.momo.collections.primaryKey,
-});
+let collections = null;
+let disbursements = null;
 
-const disbursements = Disbursements({
-  userSecret: config.momo.disbursements.userSecret,
-  userId: config.momo.disbursements.userId,
-  primaryKey: config.momo.disbursements.primaryKey,
-});
+function getCollections() {
+  if (!collections) {
+    const { Collections } = momo.create({
+      callbackHost: config.momo.callbackHost || 'https://localhost:3000',
+    });
+    collections = Collections({
+      userSecret: config.momo.collections.userSecret,
+      userId: config.momo.collections.userId,
+      primaryKey: config.momo.collections.primaryKey,
+    });
+  }
+  return collections;
+}
+
+function getDisbursements() {
+  if (!disbursements) {
+    const { Disbursements } = momo.create({
+      callbackHost: config.momo.callbackHost || 'https://localhost:3000',
+    });
+    disbursements = Disbursements({
+      userSecret: config.momo.disbursements.userSecret,
+      userId: config.momo.disbursements.userId,
+      primaryKey: config.momo.disbursements.primaryKey,
+    });
+  }
+  return disbursements;
+}
 
 async function requestToPay({ amount, phone, externalId, payerMessage }) {
-  return collections.requestToPay({
+  return getCollections().requestToPay({
     amount: String(amount),
     currency: 'GHS',
     externalId,
@@ -25,11 +44,11 @@ async function requestToPay({ amount, phone, externalId, payerMessage }) {
 }
 
 async function getPaymentStatus(referenceId) {
-  return collections.getTransaction(referenceId);
+  return getCollections().getTransaction(referenceId);
 }
 
 async function transfer({ amount, phone, externalId, payeeNote }) {
-  return disbursements.transfer({
+  return getDisbursements().transfer({
     amount: String(amount),
     currency: 'GHS',
     externalId,
@@ -40,7 +59,7 @@ async function transfer({ amount, phone, externalId, payeeNote }) {
 }
 
 async function getTransferStatus(referenceId) {
-  return disbursements.getTransaction(referenceId);
+  return getDisbursements().getTransaction(referenceId);
 }
 
 module.exports = {

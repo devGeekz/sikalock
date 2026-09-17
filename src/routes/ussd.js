@@ -11,6 +11,8 @@ function ussdResponse(message, continueSession = true) {
   return prefix + message;
 }
 
+const MENU_TEXT = '1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Ship Goods\n5. Check Status\n6. Dispute';
+
 router.post('/', async (req, res) => {
   const { sessionId, phoneNumber, text } = req.body;
 
@@ -47,6 +49,9 @@ router.post('/', async (req, res) => {
       case 'new_tx_confirm':
         response = await handleNewTxConfirm(session, phoneNumber, lastInput);
         break;
+      case 'ship_goods':
+        response = await handleShipGoods(session, phoneNumber, lastInput);
+        break;
       case 'confirm_delivery':
         response = await handleConfirmDelivery(session, phoneNumber, lastInput);
         break;
@@ -79,20 +84,16 @@ function handleMenu(session, input) {
       session.step = 'confirm_delivery';
       return ussdResponse('Enter transaction ID to confirm delivery:');
     case '4':
+      session.step = 'ship_goods';
+      return ussdResponse('Enter transaction ID to confirm shipment:');
+    case '5':
       session.step = 'check_status';
       return ussdResponse('Enter transaction ID to check status:');
-    case '5':
+    case '6':
       session.step = 'dispute';
       return ussdResponse('Enter transaction ID to dispute:');
     default:
-      return ussdResponse(
-        'Welcome to SikaLock\n' +
-        '1. Register\n' +
-        '2. New Transaction\n' +
-        '3. Confirm Delivery\n' +
-        '4. Check Status\n' +
-        '5. Dispute'
-      );
+      return ussdResponse('Welcome to SikaLock\n' + MENU_TEXT);
   }
 }
 
@@ -103,7 +104,7 @@ async function handleRegister(session, phone, name) {
 
   await escrow.getOrCreateUser(phone, name, 'buyer');
   session.step = 'menu';
-  return ussdResponse(`Registered successfully as ${name}.\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute`, false);
+  return ussdResponse(`Registered successfully as ${name}.\n\n${MENU_TEXT}`, false);
 }
 
 async function handleNewTxSeller(session, phone) {
@@ -113,7 +114,7 @@ async function handleNewTxSeller(session, phone) {
 
   const seller = await escrow.findUserByPhone(phone);
   if (!seller) {
-    return ussdResponse('No user found with that number. Please ask the seller to register first.\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute', false);
+    return ussdResponse(`No user found with that number.\n\n${MENU_TEXT}`, false);
   }
 
   session.data.sellerId = seller.id;
@@ -139,7 +140,7 @@ async function handleNewTxConfirm(session, phone, input) {
   if (input === '1') {
     const buyer = await escrow.findUserByPhone(phone);
     if (!buyer) {
-      return ussdResponse('Buyer not found. Please register first.\n\n1. Register\n2. New Transaction', false);
+      return ussdResponse(`Buyer not found. Please register first.\n\n${MENU_TEXT}`, false);
     }
 
     // Create transaction in DB
@@ -160,24 +161,52 @@ async function handleNewTxConfirm(session, phone, input) {
 
       session.step = 'menu';
       return ussdResponse(
-        `Transaction created!\nID: ${tx.id}\nAmount: GHS ${session.data.amount}\nStatus: Locked\n\nPayment initiated. You will receive an MoMo prompt to confirm.\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute`,
+        `Transaction created!\nID: ${tx.id}\nAmount: GHS ${session.data.amount}\nStatus: Locked\n\nPayment initiated. You will receive an MoMo prompt.\n\n${MENU_TEXT}`,
         false
       );
     } catch (momoErr) {
       console.error('MoMo requestToPay failed:', momoErr);
-      // Keep transaction as pending — payment can be retried via webhook
       await escrow.addLedgerEntry(tx.id, 'fund_locked');
 
       session.step = 'menu';
       return ussdResponse(
-        `Transaction created!\nID: ${tx.id}\nAmount: GHS ${session.data.amount}\nStatus: Pending\n\nPayment request failed. Please try again later or contact support.\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute`,
+        `Transaction created!\nID: ${tx.id}\nAmount: GHS ${session.data.amount}\nStatus: Pending\n\nPayment request failed. Try again later.\n\n${MENU_TEXT}`,
         false
       );
     }
   }
 
   session.step = 'menu';
-  return ussdResponse('Transaction cancelled.\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute', false);
+  return ussdResponse(`Transaction cancelled.\n\n${MENU_TEXT}`, false);
+}
+
+async function handleShipGoods(session, phone, txId) {
+  if (!txId) {
+    return ussdResponse('Enter transaction ID to confirm shipment:');
+  }
+
+  const tx = await escrow.getTransaction(txId);
+  if (!tx) {
+    return ussdResponse(`Transaction not found.\n\n${MENU_TEXT}`, false);
+  }
+
+  // Only the seller can ship
+  if (tx.seller_phone !== phone) {
+    return ussdResponse(`This is not your transaction.\n\n${MENU_TEXT}`, false);
+  }
+
+  if (tx.status !== 'locked') {
+    return ussdResponse(`Transaction status: ${tx.status}. Can only ship locked transactions.\n\n${MENU_TEXT}`, false);
+  }
+
+  await escrow.updateTransactionStatus(tx.id, 'shipped', null);
+  await escrow.addLedgerEntry(tx.id, 'goods_shipped');
+
+  session.step = 'menu';
+  return ussdResponse(
+    `Shipment confirmed!\nTransaction ${tx.id} status: Shipped\nBuyer will be notified to confirm delivery.\n\n${MENU_TEXT}`,
+    false
+  );
 }
 
 async function handleConfirmDelivery(session, phone, txId) {
@@ -187,11 +216,16 @@ async function handleConfirmDelivery(session, phone, txId) {
 
   const tx = await escrow.getTransaction(txId);
   if (!tx) {
-    return ussdResponse('Transaction not found.\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute', false);
+    return ussdResponse(`Transaction not found.\n\n${MENU_TEXT}`, false);
+  }
+
+  // Only the buyer can confirm delivery
+  if (tx.buyer_phone !== phone) {
+    return ussdResponse(`This is not your transaction.\n\n${MENU_TEXT}`, false);
   }
 
   if (tx.status !== 'shipped') {
-    return ussdResponse(`Transaction status: ${tx.status}. Can only confirm shipped transactions.\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute`, false);
+    return ussdResponse(`Transaction status: ${tx.status}. Can only confirm shipped transactions.\n\n${MENU_TEXT}`, false);
   }
 
   // Call MoMo to release funds to seller
@@ -203,14 +237,13 @@ async function handleConfirmDelivery(session, phone, txId) {
       payeeNote: `SikaLock escrow release - Transaction ${tx.id}`,
     });
 
-    // MoMo accepted the transfer
     await escrow.updateTransactionStatus(tx.id, 'released', momoResult.financialTransactionId || null);
     await escrow.addLedgerEntry(tx.id, 'buyer_confirmed');
     await escrow.addLedgerEntry(tx.id, 'funds_released');
 
     session.step = 'menu';
     return ussdResponse(
-      `Delivery confirmed!\nTransaction ${tx.id} completed.\nFunds released to ${tx.seller_name}.\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute`,
+      `Delivery confirmed!\nTransaction ${tx.id} completed.\nFunds released to ${tx.seller_name}.\n\n${MENU_TEXT}`,
       false
     );
   } catch (momoErr) {
@@ -218,7 +251,7 @@ async function handleConfirmDelivery(session, phone, txId) {
 
     session.step = 'menu';
     return ussdResponse(
-      `Could not release funds. Please try again later or contact support.\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute`,
+      `Could not release funds. Try again later.\n\n${MENU_TEXT}`,
       false
     );
   }
@@ -231,12 +264,12 @@ async function handleCheckStatus(session, txId) {
 
   const tx = await escrow.getTransaction(txId);
   if (!tx) {
-    return ussdResponse('Transaction not found.\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute', false);
+    return ussdResponse(`Transaction not found.\n\n${MENU_TEXT}`, false);
   }
 
   session.step = 'menu';
   return ussdResponse(
-    `Transaction ${tx.id}\nAmount: GHS ${tx.amount}\nStatus: ${tx.status}\nCreated: ${tx.created_at}\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute`,
+    `Transaction ${tx.id}\nAmount: GHS ${tx.amount}\nStatus: ${tx.status}\nCreated: ${tx.created_at}\n\n${MENU_TEXT}`,
     false
   );
 }
@@ -248,7 +281,7 @@ async function handleDispute(session, txId) {
 
   const tx = await escrow.getTransaction(txId);
   if (!tx) {
-    return ussdResponse('Transaction not found.\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute', false);
+    return ussdResponse(`Transaction not found.\n\n${MENU_TEXT}`, false);
   }
 
   await escrow.updateTransactionStatus(tx.id, 'disputed', null);
@@ -256,7 +289,7 @@ async function handleDispute(session, txId) {
 
   session.step = 'menu';
   return ussdResponse(
-    `Dispute opened for transaction ${tx.id}.\nOur team will review this.\n\n1. Register\n2. New Transaction\n3. Confirm Delivery\n4. Check Status\n5. Dispute`,
+    `Dispute opened for transaction ${tx.id}.\nOur team will review this.\n\n${MENU_TEXT}`,
     false
   );
 }
