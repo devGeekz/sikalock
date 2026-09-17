@@ -28,6 +28,16 @@ app.get('/health', async (req, res) => {
 async function initDb() {
   const fs = require('fs');
   const path = require('path');
+
+  // Migrations: drop old role column and enum if they exist
+  try {
+    await pool.query('ALTER TABLE users DROP COLUMN IF EXISTS role');
+    await pool.query('DROP TYPE IF EXISTS user_role CASCADE');
+    console.log('Migration: dropped user_role');
+  } catch (err) {
+    // Ignore — column/type may not exist
+  }
+
   const schema = fs.readFileSync(path.join(__dirname, 'db', 'schema.sql'), 'utf8');
   await pool.query(schema);
   console.log('Database schema initialized');

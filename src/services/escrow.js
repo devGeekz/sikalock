@@ -1,12 +1,12 @@
 const pool = require('../db/pool');
 
-async function getOrCreateUser(phone, name, role) {
+async function getOrCreateUser(phone, name) {
   const existing = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
   if (existing.rows.length > 0) return existing.rows[0];
 
   const result = await pool.query(
-    'INSERT INTO users (phone, name, role) VALUES ($1, $2, $3) RETURNING *',
-    [phone, name, role]
+    'INSERT INTO users (phone, name) VALUES ($1, $2) RETURNING *',
+    [phone, name]
   );
   return result.rows[0];
 }
@@ -26,7 +26,7 @@ async function createTransaction(buyerId, sellerId, amount) {
 
 async function getTransaction(txId) {
   const result = await pool.query(
-    `SELECT t.*, 
+    `SELECT t.*,
             b.phone as buyer_phone, b.name as buyer_name,
             s.phone as seller_phone, s.name as seller_name
      FROM transactions t
@@ -36,19 +36,6 @@ async function getTransaction(txId) {
     [txId]
   );
   return result.rows[0] || null;
-}
-
-async function getUserById(userId) {
-  const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-  return result.rows[0] || null;
-}
-
-async function getTransactionsByUser(userId) {
-  const result = await pool.query(
-    'SELECT * FROM transactions WHERE buyer_id = $1 OR seller_id = $1 ORDER BY created_at DESC',
-    [userId]
-  );
-  return result.rows;
 }
 
 async function updateTransactionStatus(txId, status, momoReference) {
@@ -77,10 +64,8 @@ async function getLedgerEntries(txId) {
 module.exports = {
   getOrCreateUser,
   findUserByPhone,
-  getUserById,
   createTransaction,
   getTransaction,
-  getTransactionsByUser,
   updateTransactionStatus,
   addLedgerEntry,
   getLedgerEntries,

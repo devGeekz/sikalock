@@ -18,6 +18,11 @@ router.post('/momo', async (req, res) => {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
+    // Dedup: skip if already locked
+    if (tx.status === 'locked') {
+      return res.status(200).json({ message: 'Already processed' });
+    }
+
     if (status === 'SUCCESSFUL') {
       await escrow.updateTransactionStatus(tx.id, 'locked', financialTransactionId);
       await escrow.addLedgerEntry(tx.id, 'fund_locked');
@@ -30,30 +35,6 @@ router.post('/momo', async (req, res) => {
     res.status(200).json({ message: 'Webhook processed' });
   } catch (err) {
     console.error('Webhook error:', err);
-    res.status(500).json({ error: 'Internal error' });
-  }
-});
-
-// Seller confirms shipment (called from a simple web form or future admin)
-router.post('/ship/:txId', async (req, res) => {
-  const { txId } = req.params;
-
-  try {
-    const tx = await escrow.getTransaction(txId);
-    if (!tx) {
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
-
-    if (tx.status !== 'locked') {
-      return res.status(400).json({ error: `Cannot ship: transaction is ${tx.status}` });
-    }
-
-    await escrow.updateTransactionStatus(tx.id, 'shipped', null);
-    await escrow.addLedgerEntry(tx.id, 'goods_shipped');
-
-    res.json({ message: 'Shipment confirmed', transactionId: tx.id });
-  } catch (err) {
-    console.error('Ship error:', err);
     res.status(500).json({ error: 'Internal error' });
   }
 });
