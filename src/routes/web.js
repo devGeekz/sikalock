@@ -315,12 +315,9 @@ router.get('/logout', (req, res) => {
 
 // Status pill helper
 function statusPill(status) {
-  const red = ['disputed', 'refunded'];
-  const isRed = red.includes(status);
-  const cls = isRed
-    ? 'text-rose-600 bg-rose-50 border-rose-100/80'
-    : 'text-blue-600 bg-blue-50 border-blue-100';
-  return `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border ${cls}">${esc(status)}</span>`;
+  const isRed = ['disputed', 'refunded'].includes(status);
+  const cls = isRed ? 'text-rose-600' : 'text-blue-600';
+  return `<span class="text-[11px] font-semibold ${cls}">${esc(status)}</span>`;
 }
 
 // Dashboard
@@ -513,7 +510,7 @@ router.get('/', requireAuth, async (req, res) => {
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <h2 class="text-lg font-bold text-zinc-900">Active Escrow In Process</h2>
-            <span class="text-xs bg-zinc-200 text-zinc-700 px-2 py-0.5 rounded-full font-semibold">${active.length}</span>
+            <span class="text-xs text-zinc-500 font-semibold">${active.length}</span>
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -684,7 +681,7 @@ router.get('/disputes', requireAuth, async (req, res) => {
               <line x1="12" x2="12.01" y1="17" y2="17"></line>
             </svg>
           </div>
-          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-100">${age}d old</span>
+          <span class="text-[11px] font-semibold text-rose-600">${age}d old</span>
         </div>
         <div class="text-[11px] font-mono text-zinc-400 mb-1">ID: ${esc(tx.id.slice(0, 8))}...</div>
         <h3 class="text-base font-bold text-zinc-900">${esc(tx.buyer_name)} vs ${esc(tx.seller_name)}</h3>
@@ -716,7 +713,7 @@ router.get('/disputes', requireAuth, async (req, res) => {
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <h2 class="text-lg font-bold text-zinc-900">Dispute Resolution</h2>
-            <span class="text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-semibold">${disputes.length}</span>
+            <span class="text-xs text-rose-600 font-semibold">${disputes.length}</span>
           </div>
         </div>
         ${disputes.length === 0 ? `
