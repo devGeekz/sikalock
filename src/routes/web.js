@@ -312,6 +312,30 @@ router.post('/verify', async (req, res) => {
   const sid = crypto.randomUUID();
   sessions[sid] = { phone, createdAt: Date.now() };
   res.setHeader('Set-Cookie', `sid=${sid}; HttpOnly; Path=/; Max-Age=86400`);
+
+  const existing = await escrow.findUserByPhone(phone);
+  if (!existing) return res.redirect('/web/setup');
+  res.redirect('/web');
+});
+
+// First-login name prompt
+router.get('/setup', requireAuth, async (req, res) => {
+  const user = await escrow.findUserByPhone(req.userPhone);
+  if (user && user.name !== user.phone) return res.redirect('/web');
+  res.send(authLayout('Your Name', `
+    <p class="text-sm text-zinc-500 mb-4">What should we call you?</p>
+    <form method="POST" action="/web/setup" class="space-y-4">
+      <input name="name" type="text" placeholder="Your name" required autofocus
+        class="w-full px-4 py-3 rounded-2xl border border-zinc-200 bg-zinc-50 text-sm focus:ring-2 focus:ring-zinc-900 focus:border-transparent outline-none transition-all" />
+      <button type="submit" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-sm py-3 rounded-2xl transition-all active:scale-[0.98]">Continue</button>
+    </form>
+  `));
+});
+
+router.post('/setup', requireAuth, async (req, res) => {
+  const name = (req.body.name || '').trim().slice(0, 60);
+  if (!name) return res.redirect('/web/setup');
+  await escrow.getOrCreateUser(req.userPhone, name);
   res.redirect('/web');
 });
 
