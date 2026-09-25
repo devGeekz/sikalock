@@ -112,6 +112,16 @@ function sidebar(user) {
         </svg>
         <span>Escrows</span>
       </a>
+      <a class="flex items-center justify-between px-4 py-3 rounded-2xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 font-medium text-sm transition-all" href="/web/disputes">
+        <div class="flex items-center gap-3.5">
+          <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" x2="12" y1="8" y2="12"></line>
+            <line x1="12" x2="12.01" y1="16" y2="16"></line>
+          </svg>
+          <span>Disputes</span>
+        </div>
+      </a>
     </nav>
     <div class="space-y-2 pt-2">
       <p class="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider px-4">Payment Rails</p>
@@ -311,10 +321,11 @@ function statusPill(status) {
     shipped: 'bg-emerald-50 text-emerald-700 border-emerald-100',
     released: 'bg-zinc-100 text-zinc-600 border-zinc-200',
     disputed: 'bg-rose-50 text-rose-600 border-rose-100/80',
+    refunded: 'bg-orange-50 text-orange-600 border-orange-100',
   };
   const dots = {
     pending: 'bg-amber-500', locked: 'bg-blue-500', shipped: 'bg-emerald-500',
-    released: 'bg-zinc-400', disputed: 'bg-rose-500',
+    released: 'bg-zinc-400', disputed: 'bg-rose-500', refunded: 'bg-orange-500',
   };
   const s = styles[status] || styles.pending;
   const d = dots[status] || dots.pending;
@@ -660,6 +671,105 @@ router.get('/tx/:id', requireAuth, async (req, res) => {
     `, user));
   } catch (err) {
     console.error('Tx detail error:', err);
+    res.status(500).send('Server error');
+  }
+});
+
+// Disputes list
+router.get('/disputes', requireAuth, async (req, res) => {
+  try {
+    const user = await escrow.getOrCreateUser(req.userPhone, req.userPhone);
+    const disputes = await escrow.getDisputedTransactions();
+
+    const cards = await Promise.all(disputes.map(async tx => {
+      const entries = await escrow.getLedgerEntries(tx.id);
+      const disputeEntry = entries.find(e => e.action === 'dispute_opened');
+      const reason = disputeEntry ? disputeEntry.detail : 'No reason given';
+      const age = Math.floor((Date.now() - new Date(tx.updated_at).getTime()) / (1000 * 60 * 60 * 24));
+      return `
+      <div class="bg-white rounded-3xl p-5 shadow-soft border border-black/[0.03]">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" x2="12" y1="9" y2="13"></line>
+              <line x1="12" x2="12.01" y1="17" y2="17"></line>
+            </svg>
+          </div>
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-100">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span> ${age}d old
+          </span>
+        </div>
+        <div class="text-[11px] font-mono text-zinc-400 mb-1">ID: ${esc(tx.id.slice(0, 8))}...</div>
+        <h3 class="text-base font-bold text-zinc-900">${esc(tx.buyer_name)} vs ${esc(tx.seller_name)}</h3>
+        <p class="text-xs text-zinc-500 mt-1">Reason: <span class="font-semibold text-zinc-700">${esc(reason)}</span></p>
+        <div class="flex items-center justify-between mt-3 pt-3 border-t border-zinc-100">
+          <div>
+            <span class="text-[10px] text-zinc-400 uppercase font-semibold">Amount</span>
+            <p class="text-sm font-extrabold text-zinc-900">GHS ${Number(tx.amount).toFixed(2)}</p>
+          </div>
+          <div class="flex gap-2">
+            <form method="POST" action="/web/disputes/${tx.id}/resolve" class="inline">
+              <input type="hidden" name="action" value="refund">
+              <button type="submit" class="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-semibold transition-colors">Refund Buyer</button>
+            </form>
+            <form method="POST" action="/web/disputes/${tx.id}/resolve" class="inline">
+              <input type="hidden" name="action" value="release">
+              <button type="submit" class="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-[11px] font-semibold transition-colors">Release to Seller</button>
+            </form>
+          </div>
+        </div>
+        <a href="/web/tx/${tx.id}" class="block mt-2 text-[11px] text-zinc-400 hover:text-zinc-700 font-medium">View full timeline &rarr;</a>
+      </div>`;
+    }));
+
+    const cardsHtml = cards.join('');
+
+    res.send(layout('Disputes', `
+      <section class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <h2 class="text-lg font-bold text-zinc-900">Dispute Resolution</h2>
+            <span class="text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-semibold">${disputes.length}</span>
+          </div>
+        </div>
+        ${disputes.length === 0 ? `
+        <div class="bg-white rounded-3xl p-8 shadow-soft border border-black/[0.03] text-center">
+          <p class="text-sm text-zinc-400 font-medium">No open disputes. All clear.</p>
+        </div>` : `
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">${cardsHtml}</div>
+        `}
+      </section>
+    `, user));
+  } catch (err) {
+    console.error('Disputes error:', err);
+    res.status(500).send('Server error');
+  }
+});
+
+// Resolve dispute
+router.post('/disputes/:id/resolve', requireAuth, async (req, res) => {
+  try {
+    const { action } = req.body;
+    const tx = await escrow.getTransaction(req.params.id);
+    if (!tx) return res.status(404).send('Not found');
+    if (tx.status !== 'disputed') return res.status(400).send('Not a disputed transaction');
+
+    if (action === 'release') {
+      await escrow.updateTransactionStatus(tx.id, 'released', null);
+      await escrow.addLedgerEntry(tx.id, 'funds_released', 'Dispute resolved: released to seller');
+      console.log(`Dispute resolved: ${tx.id} released to seller`);
+    } else if (action === 'refund') {
+      await escrow.updateTransactionStatus(tx.id, 'refunded', null);
+      await escrow.addLedgerEntry(tx.id, 'funds_refunded', 'Dispute resolved: refunded to buyer');
+      console.log(`Dispute resolved: ${tx.id} refunded to buyer`);
+    } else {
+      return res.status(400).send('Invalid action');
+    }
+
+    res.redirect('/web/disputes');
+  } catch (err) {
+    console.error('Resolve error:', err);
     res.status(500).send('Server error');
   }
 });

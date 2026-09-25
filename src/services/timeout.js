@@ -24,7 +24,7 @@ async function checkShipTimeouts() {
 
 async function checkDisputeTimeouts() {
   const result = await pool.query(
-    `UPDATE transactions SET status = 'released', updated_at = NOW()
+    `UPDATE transactions SET status = 'refunded', updated_at = NOW()
      WHERE status = 'disputed'
      AND updated_at < NOW() - INTERVAL '${DISPUTE_TIMEOUT_DAYS} days'
      RETURNING id, buyer_id, seller_id, amount, momo_reference`
@@ -33,7 +33,7 @@ async function checkDisputeTimeouts() {
   for (const tx of result.rows) {
     await pool.query(
       'INSERT INTO escrow_ledger (transaction_id, action) VALUES ($1, $2)',
-      [tx.id, 'funds_released']
+      [tx.id, 'funds_refunded']
     );
     console.log(`Auto-refund: transaction ${tx.id} — dispute not resolved within ${DISPUTE_TIMEOUT_DAYS} days`);
   }

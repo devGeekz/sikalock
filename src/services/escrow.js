@@ -87,6 +87,19 @@ async function getUserReputation(userId) {
   return result.rows[0];
 }
 
+async function getDisputedTransactions() {
+  const result = await pool.query(
+    `SELECT t.*, b.name as buyer_name, b.phone as buyer_phone,
+            s.name as seller_name, s.phone as seller_phone
+     FROM transactions t
+     JOIN users b ON t.buyer_id = b.id
+     JOIN users s ON t.seller_id = s.id
+     WHERE t.status = 'disputed'
+     ORDER BY t.updated_at ASC`
+  );
+  return result.rows;
+}
+
 module.exports = {
   getOrCreateUser,
   findUserByPhone,
@@ -97,4 +110,5 @@ module.exports = {
   getLedgerEntries,
   getUserTransactions,
   getUserReputation,
+  getDisputedTransactions,
 };

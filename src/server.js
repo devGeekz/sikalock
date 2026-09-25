@@ -41,6 +41,15 @@ async function initDb() {
 
   const schema = fs.readFileSync(path.join(__dirname, 'db', 'schema.sql'), 'utf8');
   await pool.query(schema);
+
+  // Enum migrations (CREATE TYPE won't add values to existing enums)
+  const enumAdditions = [
+    `ALTER TYPE tx_status ADD VALUE IF NOT EXISTS 'refunded'`,
+    `ALTER TYPE ledger_action ADD VALUE IF NOT EXISTS 'funds_refunded'`,
+  ];
+  for (const sql of enumAdditions) {
+    try { await pool.query(sql); } catch (e) { /* value may already exist */ }
+  }
   console.log('Database schema initialized');
 }
 

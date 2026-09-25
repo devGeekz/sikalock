@@ -1,13 +1,13 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 DO $$ BEGIN
-    CREATE TYPE tx_status AS ENUM ('pending', 'locked', 'shipped', 'released', 'disputed');
+    CREATE TYPE tx_status AS ENUM ('pending', 'locked', 'shipped', 'released', 'disputed', 'refunded');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE ledger_action AS ENUM ('fund_locked', 'goods_shipped', 'buyer_confirmed', 'funds_released', 'dispute_opened');
+    CREATE TYPE ledger_action AS ENUM ('fund_locked', 'goods_shipped', 'buyer_confirmed', 'funds_released', 'dispute_opened', 'funds_refunded');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
