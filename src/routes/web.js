@@ -70,6 +70,26 @@ tailwind.config = {
   .circle-bg { fill: none; stroke: #F0F1F3; stroke-width: 3.2; }
   .circle { fill: none; stroke-width: 3.2; stroke-linecap: round; transition: stroke-dasharray 0.6s ease; }
   .frosted-glass-border { box-shadow: 0 0 0 1px rgba(255,255,255,0.8) inset, 0 12px 36px rgba(0,0,0,0.05); }
+  /* Sidebar: hidden on mobile by default */
+  #sidebar { display: none; }
+  @media (min-width: 1024px) { #sidebar { display: flex; } }
+  /* Mobile: open as fixed overlay */
+  #sidebar.mobile-open {
+    display: flex; position: fixed; top: 0; left: 0; bottom: 0; width: 16rem; z-index: 50;
+    border-radius: 0; overflow-y: auto;
+  }
+  #sb-backdrop { display: none; }
+  #sb-backdrop.open { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40; }
+  /* Desktop: collapsed icon rail */
+  #sidebar .sb-collapsed { display: none; }
+  @media (min-width: 1024px) {
+    #sidebar.collapsed { width: 4.75rem; }
+    #sidebar.collapsed .sb-text, #sidebar.collapsed .sb-section { display: none; }
+    #sidebar.collapsed .sb-link { justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
+    #sidebar.collapsed .sb-brand { justify-content: center; }
+    #sidebar.collapsed .sb-collapsed { display: flex; }
+    #sidebar.collapsed > div:first-child > .sb-brand .sb-text { display: none; }
+  }
 </style>`;
 
 // Sidebar for authenticated pages
@@ -77,56 +97,62 @@ function sidebar(user) {
   const ini = initials(user.name);
   const isAdmin = config.adminPhone && normalizePhone(config.adminPhone) === user.phone;
   return `
-<aside class="w-full lg:w-64 bg-white rounded-3xl p-6 flex flex-col justify-between shadow-soft border border-black/[0.03]">
+<aside id="sidebar" class="w-64 bg-white rounded-3xl p-6 flex-col justify-between shadow-soft border border-black/[0.03]">
   <div class="space-y-8">
-    <div class="flex items-center gap-3 px-2">
-      <div class="w-10 h-10 rounded-2xl bg-zinc-900 flex items-center justify-center text-white shadow-md">
+    <div class="sb-brand flex items-center gap-3 px-2">
+      <div class="w-10 h-10 shrink-0 rounded-2xl bg-zinc-900 flex items-center justify-center text-white shadow-md">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewBox="0 0 24 24">
           <rect height="11" rx="3" ry="3" width="18" x="3" y="11"></rect>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
           <circle cx="12" cy="16" fill="currentColor" r="1.5"></circle>
         </svg>
       </div>
-      <div class="flex flex-col">
+      <div class="sb-text flex flex-col">
         <span class="font-bold text-xl tracking-tight text-zinc-900 leading-none">Sika<span class="text-zinc-500 font-medium">Lock</span></span>
         <span class="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mt-1">Escrow Protocol</span>
       </div>
+      <button onclick="toggleSidebar()" aria-label="Collapse sidebar" class="sb-text ml-auto hidden lg:flex w-7 h-7 rounded-lg items-center justify-center text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"></path></svg>
+      </button>
+      <button onclick="toggleSidebar()" aria-label="Expand sidebar" class="sb-collapsed hidden w-7 h-7 rounded-lg items-center justify-center text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"></path></svg>
+      </button>
     </div>
     <nav aria-label="Main Navigation" class="space-y-1.5">
-      <a class="flex items-center gap-3.5 px-4 py-3 rounded-2xl bg-zinc-900 text-white font-medium text-sm transition-all shadow-sm" href="/web">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+      <a class="sb-link flex items-center gap-3.5 px-4 py-3 rounded-2xl bg-zinc-900 text-white font-medium text-sm transition-all shadow-sm" href="/web">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
           <rect height="7" rx="1.5" width="7" x="3" y="3"></rect>
           <rect height="7" rx="1.5" width="7" x="14" y="3"></rect>
           <rect height="7" rx="1.5" width="7" x="14" y="14"></rect>
           <rect height="7" rx="1.5" width="7" x="3" y="14"></rect>
         </svg>
-        <span>Dashboard</span>
+        <span class="sb-text">Dashboard</span>
       </a>
-      <a class="flex items-center gap-3.5 px-4 py-3 rounded-2xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 font-medium text-sm transition-all" href="/web#transactions">
-        <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <a class="sb-link flex items-center gap-3.5 px-4 py-3 rounded-2xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 font-medium text-sm transition-all" href="/web#transactions">
+        <svg class="w-4 h-4 shrink-0 text-zinc-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M17 3v18M7 21V3M17 7l4 4M7 17l-4-4"></path>
         </svg>
-        <span>Transactions</span>
+        <span class="sb-text">Transactions</span>
       </a>
-      <a class="flex items-center gap-3.5 px-4 py-3 rounded-2xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 font-medium text-sm transition-all" href="/web#active">
-        <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <a class="sb-link flex items-center gap-3.5 px-4 py-3 rounded-2xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 font-medium text-sm transition-all" href="/web#active">
+        <svg class="w-4 h-4 shrink-0 text-zinc-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
         </svg>
-        <span>Escrows</span>
+        <span class="sb-text">Escrows</span>
       </a>
       ${isAdmin ? `
-      <a class="flex items-center justify-between px-4 py-3 rounded-2xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 font-medium text-sm transition-all" href="/web/disputes">
+      <a class="sb-link flex items-center justify-between px-4 py-3 rounded-2xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 font-medium text-sm transition-all" href="/web/disputes">
         <div class="flex items-center gap-3.5">
-          <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 shrink-0 text-zinc-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" x2="12" y1="8" y2="12"></line>
             <line x1="12" x2="12.01" y1="16" y2="16"></line>
           </svg>
-          <span>Disputes</span>
+          <span class="sb-text">Disputes</span>
         </div>
       </a>` : ''}
     </nav>
-    <div class="space-y-2 pt-2">
+    <div class="sb-section space-y-2 pt-2">
       <p class="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider px-4">Payment Rails</p>
       <div class="space-y-1">
         <div class="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-zinc-700 rounded-xl">
@@ -141,14 +167,14 @@ function sidebar(user) {
     </div>
   </div>
   <div class="pt-6 border-t border-zinc-100 space-y-2">
-    <a class="flex items-center justify-between px-4 py-2.5 text-zinc-500 hover:text-rose-600 font-medium text-sm rounded-xl hover:bg-rose-50/50 transition-colors" href="/web/logout">
+    <a class="sb-link flex items-center justify-between px-4 py-2.5 text-zinc-500 hover:text-rose-600 font-medium text-sm rounded-xl hover:bg-rose-50/50 transition-colors" href="/web/logout">
       <div class="flex items-center gap-3">
-        <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 shrink-0 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
           <polyline points="16 17 21 12 16 7"></polyline>
           <line x1="21" x2="9" y1="12" y2="12"></line>
         </svg>
-        <span>Logout</span>
+        <span class="sb-text">Logout</span>
       </div>
     </a>
   </div>
@@ -163,12 +189,18 @@ function layout(title, body, user) {
 <head>${HEAD}<title>${esc(title)} | SikaLock</title></head>
 <body class="text-zinc-900 antialiased p-3 sm:p-6 lg:p-8 flex items-center justify-center">
 <div class="w-full max-w-[1440px] bg-[#EFEFEF]/70 backdrop-blur-2xl p-3 sm:p-5 lg:p-6 rounded-[2.5rem] border border-white/60 shadow-2xl flex flex-col lg:flex-row gap-6">
+  <div id="sb-backdrop" onclick="toggleSidebar()"></div>
   ${sidebar(user)}
   <main class="flex-1 flex flex-col gap-6 overflow-hidden">
     <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-1">
-      <div>
-        <h1 class="text-3xl font-extrabold tracking-tight text-zinc-950">Hi, ${esc(user.name)}!</h1>
-        <p class="text-sm text-zinc-500 font-medium mt-0.5">Here is what is happening with your escrows and reputation today.</p>
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" aria-label="Open menu" class="lg:hidden w-10 h-10 shrink-0 rounded-2xl bg-white border border-black/[0.06] shadow-sm flex items-center justify-center text-zinc-700 active:scale-95 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" x2="21" y1="6" y2="6"></line><line x1="3" x2="21" y1="12" y2="12"></line><line x1="3" x2="21" y1="18" y2="18"></line></svg>
+        </button>
+        <div>
+          <h1 class="text-3xl font-extrabold tracking-tight text-zinc-950">Hi, ${esc(user.name)}!</h1>
+          <p class="text-sm text-zinc-500 font-medium mt-0.5">Here is what is happening with your escrows and reputation today.</p>
+        </div>
       </div>
       <div class="flex items-center gap-3 self-stretch md:self-auto justify-end">
         <div class="flex items-center gap-3 pl-1">
@@ -179,6 +211,20 @@ function layout(title, body, user) {
     ${body}
   </main>
 </div>
+<script>
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sb-backdrop');
+  if (window.innerWidth >= 1024) {
+    sb.classList.toggle('collapsed');
+    localStorage.setItem('sb-collapsed', sb.classList.contains('collapsed'));
+  } else {
+    sb.classList.toggle('mobile-open');
+    bd.classList.toggle('open');
+  }
+}
+if (localStorage.getItem('sb-collapsed') === 'true') document.getElementById('sidebar').classList.add('collapsed');
+</script>
 </body>
 </html>`;
 }
