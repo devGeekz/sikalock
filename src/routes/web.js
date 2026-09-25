@@ -127,11 +127,11 @@ function sidebar(user) {
       <p class="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider px-4">Payment Rails</p>
       <div class="space-y-1">
         <div class="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-zinc-700 rounded-xl">
-          <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>Mobile Money (MTN/Vod)</span>
+          <span class="flex items-center gap-2 text-blue-600 font-medium">Mobile Money (MTN/Vod)</span>
           <span class="text-[10px] text-zinc-400 font-mono">Sandbox</span>
         </div>
         <div class="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-zinc-700 rounded-xl">
-          <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-zinc-300"></span>Bank Instant Direct</span>
+          <span class="flex items-center gap-2 text-zinc-500">Bank Instant Direct</span>
           <span class="text-[10px] text-zinc-400 font-mono">Planned</span>
         </div>
       </div>
@@ -315,21 +315,12 @@ router.get('/logout', (req, res) => {
 
 // Status pill helper
 function statusPill(status) {
-  const styles = {
-    pending: 'bg-amber-50 text-amber-600 border-amber-100',
-    locked: 'bg-blue-50 text-blue-600 border-blue-100',
-    shipped: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-    released: 'bg-zinc-100 text-zinc-600 border-zinc-200',
-    disputed: 'bg-rose-50 text-rose-600 border-rose-100/80',
-    refunded: 'bg-orange-50 text-orange-600 border-orange-100',
-  };
-  const dots = {
-    pending: 'bg-amber-500', locked: 'bg-blue-500', shipped: 'bg-emerald-500',
-    released: 'bg-zinc-400', disputed: 'bg-rose-500', refunded: 'bg-orange-500',
-  };
-  const s = styles[status] || styles.pending;
-  const d = dots[status] || dots.pending;
-  return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${s}"><span class="w-1.5 h-1.5 rounded-full ${d}"></span>${esc(status)}</span>`;
+  const red = ['disputed', 'refunded'];
+  const isRed = red.includes(status);
+  const cls = isRed
+    ? 'text-rose-600 bg-rose-50 border-rose-100/80'
+    : 'text-blue-600 bg-blue-50 border-blue-100';
+  return `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border ${cls}">${esc(status)}</span>`;
 }
 
 // Dashboard
@@ -452,23 +443,21 @@ router.get('/', requireAuth, async (req, res) => {
           </div>
           <div class="grid grid-cols-2 gap-3 pt-2">
             <div class="bg-zinc-800/90 border border-zinc-700/50 rounded-2xl p-3.5">
-              <div class="flex items-center justify-between text-zinc-400 mb-1">
+              <div class="text-zinc-400 mb-1">
                 <span class="text-[11px] font-medium tracking-wide">Disputes by you</span>
-                <span class="w-2 h-2 rounded-full ${rep.disputes_made > 0 ? 'bg-rose-400' : 'bg-zinc-600'}"></span>
               </div>
               <div class="flex items-baseline gap-1.5">
                 <span class="text-2xl font-bold text-white">${rep.disputes_made}</span>
-                <span class="text-[11px] text-zinc-400 font-normal">${rep.disputes_made > 0 ? 'in review' : 'clean'}</span>
+                <span class="text-[11px] ${rep.disputes_made > 0 ? 'text-rose-400' : 'text-zinc-400'} font-normal">${rep.disputes_made > 0 ? 'in review' : 'clean'}</span>
               </div>
             </div>
             <div class="bg-zinc-800/90 border border-zinc-700/50 rounded-2xl p-3.5">
-              <div class="flex items-center justify-between text-zinc-400 mb-1">
+              <div class="text-zinc-400 mb-1">
                 <span class="text-[11px] font-medium tracking-wide">Against you</span>
-                <span class="w-2 h-2 rounded-full ${rep.disputes_against > 0 ? 'bg-rose-400' : 'bg-emerald-400'}"></span>
               </div>
               <div class="flex items-baseline gap-1.5">
                 <span class="text-2xl font-bold text-white">${rep.disputes_against}</span>
-                <span class="text-[11px] ${rep.disputes_against > 0 ? 'text-rose-400' : 'text-emerald-400'} font-normal">${rep.disputes_against > 0 ? 'flagged' : 'clean record'}</span>
+                <span class="text-[11px] ${rep.disputes_against > 0 ? 'text-rose-400' : 'text-blue-400'} font-normal">${rep.disputes_against > 0 ? 'flagged' : 'clean record'}</span>
               </div>
             </div>
           </div>
@@ -596,7 +585,6 @@ router.get('/tx/:id', requireAuth, async (req, res) => {
     const ledger = await escrow.getLedgerEntries(tx.id);
     const timeline = ledger.map(entry => `
       <li class="flex items-start gap-3">
-        <span class="w-2 h-2 rounded-full bg-zinc-900 mt-2 shrink-0"></span>
         <div class="flex-1 pb-4">
           <div class="flex items-center justify-between">
             <span class="text-sm font-semibold text-zinc-900 capitalize">${esc(entry.action.replace(/_/g, ' '))}</span>
@@ -696,9 +684,7 @@ router.get('/disputes', requireAuth, async (req, res) => {
               <line x1="12" x2="12.01" y1="17" y2="17"></line>
             </svg>
           </div>
-          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-100">
-            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span> ${age}d old
-          </span>
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-100">${age}d old</span>
         </div>
         <div class="text-[11px] font-mono text-zinc-400 mb-1">ID: ${esc(tx.id.slice(0, 8))}...</div>
         <h3 class="text-base font-bold text-zinc-900">${esc(tx.buyer_name)} vs ${esc(tx.seller_name)}</h3>
