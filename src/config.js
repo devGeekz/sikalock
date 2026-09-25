@@ -3,6 +3,7 @@ require('dotenv').config();
 module.exports = {
   port: process.env.PORT || 3000,
   nodeEnv: process.env.NODE_ENV || 'development',
+  adminPhone: process.env.ADMIN_PHONE || '',
   db: {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432'),

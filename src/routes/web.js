@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const escrow = require('../services/escrow');
 const sms = require('../services/sms');
+const config = require('../config');
 const { normalizePhone } = require('./ussd');
 
 const router = express.Router();
@@ -74,6 +75,7 @@ tailwind.config = {
 // Sidebar for authenticated pages
 function sidebar(user) {
   const ini = initials(user.name);
+  const isAdmin = config.adminPhone && normalizePhone(config.adminPhone) === user.phone;
   return `
 <aside class="w-full lg:w-64 bg-white rounded-3xl p-6 flex flex-col justify-between shadow-soft border border-black/[0.03]">
   <div class="space-y-8">
@@ -112,6 +114,7 @@ function sidebar(user) {
         </svg>
         <span>Escrows</span>
       </a>
+      ${isAdmin ? `
       <a class="flex items-center justify-between px-4 py-3 rounded-2xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 font-medium text-sm transition-all" href="/web/disputes">
         <div class="flex items-center gap-3.5">
           <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -121,7 +124,7 @@ function sidebar(user) {
           </svg>
           <span>Disputes</span>
         </div>
-      </a>
+      </a>` : ''}
     </nav>
     <div class="space-y-2 pt-2">
       <p class="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider px-4">Payment Rails</p>
@@ -228,6 +231,12 @@ function requireAuth(req, res, next) {
   const phone = getSessionPhone(req);
   if (!phone) return res.redirect('/web/login');
   req.userPhone = phone;
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  const admin = normalizePhone(config.adminPhone || '');
+  if (!admin || req.userPhone !== admin) return res.status(403).send('Forbidden');
   next();
 }
 
@@ -661,7 +670,7 @@ router.get('/tx/:id', requireAuth, async (req, res) => {
 });
 
 // Disputes list
-router.get('/disputes', requireAuth, async (req, res) => {
+router.get('/disputes', requireAuth, requireAdmin, async (req, res) => {
   try {
     const user = await escrow.getOrCreateUser(req.userPhone, req.userPhone);
     const disputes = await escrow.getDisputedTransactions();
@@ -731,7 +740,7 @@ router.get('/disputes', requireAuth, async (req, res) => {
 });
 
 // Resolve dispute
-router.post('/disputes/:id/resolve', requireAuth, async (req, res) => {
+router.post('/disputes/:id/resolve', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { action } = req.body;
     const tx = await escrow.getTransaction(req.params.id);
