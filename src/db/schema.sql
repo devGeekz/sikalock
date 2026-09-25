@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS escrow_ledger (
     timestamp TIMESTAMP DEFAULT NOW()
 );
 
+ALTER TABLE escrow_ledger ADD COLUMN IF NOT EXISTS detail VARCHAR(255);
+
 CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
 CREATE INDEX IF NOT EXISTS idx_transactions_buyer ON transactions(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_seller ON transactions(seller_id);

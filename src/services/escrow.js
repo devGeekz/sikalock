@@ -46,10 +46,10 @@ async function updateTransactionStatus(txId, status, momoReference) {
   return result.rows[0];
 }
 
-async function addLedgerEntry(txId, action) {
+async function addLedgerEntry(txId, action, detail = null) {
   await pool.query(
-    'INSERT INTO escrow_ledger (transaction_id, action) VALUES ($1, $2)',
-    [txId, action]
+    'INSERT INTO escrow_ledger (transaction_id, action, detail) VALUES ($1, $2, $3)',
+    [txId, action, detail]
   );
 }
 
@@ -61,6 +61,32 @@ async function getLedgerEntries(txId) {
   return result.rows;
 }
 
+async function getUserTransactions(userId) {
+  const result = await pool.query(
+    `SELECT t.*, b.name as buyer_name, b.phone as buyer_phone,
+            s.name as seller_name, s.phone as seller_phone
+     FROM transactions t
+     JOIN users b ON t.buyer_id = b.id
+     JOIN users s ON t.seller_id = s.id
+     WHERE t.buyer_id = $1 OR t.seller_id = $1
+     ORDER BY t.created_at DESC`,
+    [userId]
+  );
+  return result.rows;
+}
+
+async function getUserReputation(userId) {
+  const result = await pool.query(
+    `SELECT
+       (SELECT COUNT(*) FROM transactions WHERE buyer_id = $1) as total_bought,
+       (SELECT COUNT(*) FROM transactions WHERE seller_id = $1) as total_sold,
+       (SELECT COUNT(*) FROM transactions WHERE buyer_id = $1 AND status = 'disputed') as disputes_made,
+       (SELECT COUNT(*) FROM transactions WHERE seller_id = $1 AND status = 'disputed') as disputes_against`,
+    [userId]
+  );
+  return result.rows[0];
+}
+
 module.exports = {
   getOrCreateUser,
   findUserByPhone,
@@ -69,4 +95,6 @@ module.exports = {
   updateTransactionStatus,
   addLedgerEntry,
   getLedgerEntries,
+  getUserTransactions,
+  getUserReputation,
 };

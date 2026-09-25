@@ -74,7 +74,10 @@ router.post('/', async (req, res) => {
         response = await handleCheckStatus(session, lastInput);
         break;
       case 'dispute':
-        response = await handleDispute(session, lastInput);
+        response = await handleDispute(session, normalizedPhone, lastInput);
+        break;
+      case 'dispute_reason':
+        response = await handleDisputeReason(session, lastInput);
         break;
       default:
         response = ussdResponse('Something went wrong. Please dial again.', false);
@@ -299,7 +302,7 @@ async function handleCheckStatus(session, txId) {
   );
 }
 
-async function handleDispute(session, txId) {
+async function handleDispute(session, phone, txId) {
   if (!txId) {
     return ussdResponse('Enter transaction ID to dispute:');
   }
@@ -309,19 +312,42 @@ async function handleDispute(session, txId) {
     return ussdResponse(`Transaction not found.\n\n${MENU_TEXT}`, false);
   }
 
+  if (tx.buyer_phone !== phone && tx.seller_phone !== phone) {
+    return ussdResponse(`This is not your transaction.\n\n${MENU_TEXT}`, false);
+  }
+
   if (tx.status !== 'locked' && tx.status !== 'shipped') {
     return ussdResponse(`Cannot dispute transaction with status: ${tx.status}.\n\n${MENU_TEXT}`, false);
   }
 
-  await escrow.updateTransactionStatus(tx.id, 'disputed', null);
-  await escrow.addLedgerEntry(tx.id, 'dispute_opened');
+  session.data.txId = tx.id;
+  session.step = 'dispute_reason';
+  return ussdResponse("Why are you disputing?\n1. Haven't received goods\n2. Wrong/damaged goods\n3. Other");
+}
+
+const DISPUTE_REASONS = {
+  '1': "Haven't received goods",
+  '2': 'Wrong/damaged goods',
+  '3': 'Other',
+};
+
+async function handleDisputeReason(session, input) {
+  const reason = DISPUTE_REASONS[input];
+  if (!reason) {
+    return ussdResponse("Why are you disputing?\n1. Haven't received goods\n2. Wrong/damaged goods\n3. Other");
+  }
+
+  const txId = session.data.txId;
+  await escrow.updateTransactionStatus(txId, 'disputed', null);
+  await escrow.addLedgerEntry(txId, 'dispute_opened', reason);
 
   session.step = 'menu';
   session.data = {};
   return ussdResponse(
-    `Dispute opened for transaction ${tx.id}.\nOur team will review this.\n\n${MENU_TEXT}`,
+    `Dispute opened for transaction ${txId}.\nReason: ${reason}\nOur team will review this.\n\n${MENU_TEXT}`,
     false
   );
 }
 
 module.exports = router;
+module.exports.normalizePhone = normalizePhone;

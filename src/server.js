@@ -13,6 +13,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/ussd', require('./routes/ussd'));
 app.use('/webhook', require('./routes/webhook'));
+app.use('/web', require('./routes/web'));
 
 // Health check
 app.get('/health', async (req, res) => {
