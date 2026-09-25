@@ -510,7 +510,7 @@ router.get('/', requireAuth, async (req, res) => {
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
               <span class="text-xl font-black text-zinc-900 tracking-tight leading-none">${safeRate}%</span>
-              <span class="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Escrow Score</span>
+              <span class="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Score</span>
             </div>
           </div>
         </article>
