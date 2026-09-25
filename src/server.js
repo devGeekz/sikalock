@@ -47,6 +47,8 @@ async function initDb() {
 async function start() {
   try {
     await initDb();
+    const { startTimeoutChecker } = require('./services/timeout');
+    startTimeoutChecker();
     app.listen(config.port, () => {
       console.log(`SikaLock server running on port ${config.port}`);
       console.log(`Environment: ${config.nodeEnv}`);

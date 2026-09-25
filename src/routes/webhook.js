@@ -57,4 +57,11 @@ router.get('/transaction/:txId', async (req, res) => {
   }
 });
 
+// Manual timeout check (for testing)
+const { runTimeoutChecks } = require('../services/timeout');
+router.post('/timeout-check', async (req, res) => {
+  await runTimeoutChecks();
+  res.json({ message: 'Timeout checks completed' });
+});
+
 module.exports = router;
