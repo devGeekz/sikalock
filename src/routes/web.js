@@ -751,10 +751,14 @@ router.post('/disputes/:id/resolve', requireAuth, requireAdmin, async (req, res)
       await escrow.updateTransactionStatus(tx.id, 'released', null);
       await escrow.addLedgerEntry(tx.id, 'funds_released', 'Dispute resolved: released to seller');
       console.log(`Dispute resolved: ${tx.id} released to seller`);
+      sms.sendSMS(tx.seller_phone, `SikaLock: Dispute resolved in your favor. GHS ${tx.amount} released to you. ID: ${tx.id}`).catch(() => {});
+      sms.sendSMS(tx.buyer_phone, `SikaLock: Dispute on ${tx.id} resolved. Funds released to seller.`).catch(() => {});
     } else if (action === 'refund') {
       await escrow.updateTransactionStatus(tx.id, 'refunded', null);
       await escrow.addLedgerEntry(tx.id, 'funds_refunded', 'Dispute resolved: refunded to buyer');
       console.log(`Dispute resolved: ${tx.id} refunded to buyer`);
+      sms.sendSMS(tx.buyer_phone, `SikaLock: Dispute resolved in your favor. GHS ${tx.amount} refunded to you. ID: ${tx.id}`).catch(() => {});
+      sms.sendSMS(tx.seller_phone, `SikaLock: Dispute on ${tx.id} resolved. Funds refunded to buyer.`).catch(() => {});
     } else {
       return res.status(400).send('Invalid action');
     }

@@ -2,6 +2,12 @@ const express = require('express');
 const router = express.Router();
 const escrow = require('../services/escrow');
 const momo = require('../services/momo');
+const sms = require('../services/sms');
+
+// Fire-and-forget SMS (ponytail: notifications must not block the USSD response)
+function notify(phone, message) {
+  sms.sendSMS(phone, message).catch(err => console.error('SMS notify failed:', err));
+}
 
 // In-memory session store (replace with Redis in production)
 const sessions = {};
@@ -181,6 +187,8 @@ async function handleNewTxConfirm(session, phone, input) {
       await escrow.updateTransactionStatus(tx.id, 'locked', momoResult.financialTransactionId || null);
       await escrow.addLedgerEntry(tx.id, 'fund_locked');
 
+      notify(session.data.sellerPhone, `SikaLock: New escrow of GHS ${amount} from buyer. ID: ${tx.id}. Funds are locked.`);
+
       session.step = 'menu';
       session.data = {};
       return ussdResponse(
@@ -226,10 +234,12 @@ async function handleShipGoods(session, phone, txId) {
   await escrow.updateTransactionStatus(tx.id, 'shipped', null);
   await escrow.addLedgerEntry(tx.id, 'goods_shipped');
 
+  notify(tx.buyer_phone, `SikaLock: Seller has shipped your goods. Confirm delivery within 7 days to release funds, or dispute. ID: ${tx.id}`);
+
   session.step = 'menu';
   session.data = {};
   return ussdResponse(
-    `Shipment confirmed!\nTransaction ${tx.id} status: Shipped\nBuyer will be notified to confirm delivery.\n\n${MENU_TEXT}`,
+    `Shipment confirmed!\nTransaction ${tx.id} status: Shipped\nBuyer has been notified.\n\n${MENU_TEXT}`,
     false
   );
 }
@@ -265,6 +275,9 @@ async function handleConfirmDelivery(session, phone, txId) {
     await escrow.updateTransactionStatus(tx.id, 'released', momoResult.financialTransactionId || null);
     await escrow.addLedgerEntry(tx.id, 'buyer_confirmed');
     await escrow.addLedgerEntry(tx.id, 'funds_released');
+
+    notify(tx.seller_phone, `SikaLock: GHS ${tx.amount} released to you. Transaction ${tx.id} completed.`);
+    notify(tx.buyer_phone, `SikaLock: Delivery confirmed. GHS ${tx.amount} released to seller. Transaction ${tx.id} completed.`);
 
     session.step = 'menu';
     session.data = {};
@@ -338,8 +351,14 @@ async function handleDisputeReason(session, input) {
   }
 
   const txId = session.data.txId;
+  const tx = await escrow.getTransaction(txId);
   await escrow.updateTransactionStatus(txId, 'disputed', null);
   await escrow.addLedgerEntry(txId, 'dispute_opened', reason);
+
+  if (tx) {
+    notify(tx.buyer_phone, `SikaLock: Dispute opened on transaction ${txId}. Reason: ${reason}. Resolves within 14 days.`);
+    notify(tx.seller_phone, `SikaLock: Dispute opened on transaction ${txId}. Reason: ${reason}. Resolves within 14 days.`);
+  }
 
   session.step = 'menu';
   session.data = {};
