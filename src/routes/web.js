@@ -547,17 +547,19 @@ router.get('/', requireAuth, async (req, res) => {
               <span class="text-xs text-zinc-400 font-medium">${safeRate}% safe checkout</span>
             </div>
           </div>
-          <div class="flex items-center justify-center py-4 relative">
-            <svg class="w-32 h-32 circular-chart" viewBox="0 0 36 36">
-              <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
-              <path class="circle" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" stroke="#18181B" stroke-dasharray="${safeRate}, 100"></path>
-              <path class="circle-bg" d="M18 6.5 a 11.5 11.5 0 0 1 0 23 a 11.5 11.5 0 0 1 0 -23" stroke-width="2"></path>
-              <path class="circle" d="M18 6.5 a 11.5 11.5 0 0 1 0 23 a 11.5 11.5 0 0 1 0 -23" stroke="#A1A1AA" stroke-dasharray="${Math.min(rep.total_bought + rep.total_sold, 100)}, 100" stroke-width="2"></path>
-            </svg>
-            <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <span class="text-lg font-black text-zinc-900 tracking-tight leading-none">${safeRate}%</span>
-              <span class="text-[9px] text-zinc-400 uppercase tracking-wider mt-1">Escrow Score</span>
+          <div class="flex flex-col items-center justify-center py-4">
+            <div class="relative">
+              <svg class="w-32 h-32 circular-chart" viewBox="0 0 36 36">
+                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                <path class="circle" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" stroke="#18181B" stroke-dasharray="${safeRate}, 100"></path>
+                <path class="circle-bg" d="M18 6.5 a 11.5 11.5 0 0 1 0 23 a 11.5 11.5 0 0 1 0 -23" stroke-width="2"></path>
+                <path class="circle" d="M18 6.5 a 11.5 11.5 0 0 1 0 23 a 11.5 11.5 0 0 1 0 -23" stroke="#A1A1AA" stroke-dasharray="${Math.min(rep.total_bought + rep.total_sold, 100)}, 100" stroke-width="2"></path>
+              </svg>
+              <div class="absolute inset-0 flex items-center justify-center">
+                <span class="text-lg font-black text-zinc-900 tracking-tight leading-none">${safeRate}%</span>
+              </div>
             </div>
+            <span class="text-[10px] text-zinc-400 uppercase tracking-widest mt-2">Escrow Score</span>
           </div>
         </article>
 
