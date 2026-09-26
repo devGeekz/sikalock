@@ -87,8 +87,8 @@ tailwind.config = {
     #sidebar.collapsed .sb-text, #sidebar.collapsed .sb-section { display: none; }
     #sidebar.collapsed .sb-link { justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
     #sidebar.collapsed .sb-brand { justify-content: center; }
+    #sidebar.collapsed .sb-logo { display: none; }
     #sidebar.collapsed .sb-collapsed { display: flex; }
-    #sidebar.collapsed > div:first-child > .sb-brand .sb-text { display: none; }
   }
 </style>`;
 
@@ -100,7 +100,7 @@ function sidebar(user) {
 <aside id="sidebar" class="w-64 bg-white rounded-3xl p-6 flex-col justify-between shadow-soft border border-black/[0.03]">
   <div class="space-y-8">
     <div class="sb-brand flex items-center gap-3 px-2">
-      <div class="w-10 h-10 shrink-0 rounded-2xl bg-zinc-900 flex items-center justify-center text-white shadow-md">
+      <div class="sb-logo w-10 h-10 shrink-0 rounded-2xl bg-zinc-900 flex items-center justify-center text-white shadow-md">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewBox="0 0 24 24">
           <rect height="11" rx="3" ry="3" width="18" x="3" y="11"></rect>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
