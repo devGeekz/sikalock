@@ -70,6 +70,13 @@ tailwind.config = {
   .circle-bg { fill: none; stroke: #F0F1F3; stroke-width: 3.2; }
   .circle { fill: none; stroke-width: 3.2; stroke-linecap: round; transition: stroke-dasharray 0.6s ease; }
   .frosted-glass-border { box-shadow: 0 0 0 1px rgba(255,255,255,0.8) inset, 0 12px 36px rgba(0,0,0,0.05); }
+  /* Staging entrance animation */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .rise { animation: rise 0.8s cubic-bezier(0.22,1,0.36,1) both; }
+  @media (prefers-reduced-motion: reduce) { .rise { animation: none; } }
   /* Sidebar: hidden on mobile by default */
   #sidebar { display: none; }
   @media (min-width: 1024px) { #sidebar { display: flex; } }
@@ -97,7 +104,7 @@ function sidebar(user) {
   const ini = initials(user.name);
   const isAdmin = config.adminPhone && normalizePhone(config.adminPhone) === user.phone;
   return `
-<aside id="sidebar" class="w-64 bg-white rounded-3xl p-6 flex-col justify-between shadow-soft border border-black/[0.03]">
+<aside id="sidebar" class="rise w-64 bg-white rounded-3xl p-6 flex-col justify-between shadow-soft border border-black/[0.03]">
   <div class="space-y-8">
     <div class="sb-brand flex items-center gap-3 px-2">
       <div class="sb-logo w-10 h-10 shrink-0 rounded-2xl bg-zinc-900 flex items-center justify-center text-white shadow-md">
@@ -192,7 +199,7 @@ function layout(title, body, user) {
   <div id="sb-backdrop" onclick="toggleSidebar()"></div>
   ${sidebar(user)}
   <main class="flex-1 flex flex-col gap-6 overflow-hidden">
-    <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-1">
+    <header class="rise flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-1" style="animation-delay:110ms">
       <div class="flex items-center gap-3">
         <button onclick="toggleSidebar()" aria-label="Open menu" class="lg:hidden w-10 h-10 shrink-0 rounded-2xl bg-white border border-black/[0.06] shadow-sm flex items-center justify-center text-zinc-700 active:scale-95 transition-all">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" x2="21" y1="6" y2="6"></line><line x1="3" x2="21" y1="12" y2="12"></line><line x1="3" x2="21" y1="18" y2="18"></line></svg>
@@ -497,7 +504,7 @@ router.get('/', requireAuth, async (req, res) => {
       <!-- Metrics Grid -->
       <section class="grid grid-cols-1 md:grid-cols-12 gap-5">
         <!-- Reputation Dark Card -->
-        <article class="md:col-span-12 lg:col-span-5 bg-zinc-900 text-white rounded-3xl p-6 shadow-dark-elevated flex flex-col justify-between relative overflow-hidden">
+        <article class="rise md:col-span-12 lg:col-span-5 bg-zinc-900 text-white rounded-3xl p-6 shadow-dark-elevated flex flex-col justify-between relative overflow-hidden" style="animation-delay:220ms">
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold tracking-wider uppercase text-zinc-400">Reputation &amp; Summary</span>
           </div>
@@ -540,7 +547,7 @@ router.get('/', requireAuth, async (req, res) => {
         </article>
 
         <!-- Security Health Card -->
-        <article class="md:col-span-6 lg:col-span-4 bg-white rounded-3xl p-6 shadow-soft border border-black/[0.03] flex flex-col justify-between">
+        <article class="rise md:col-span-6 lg:col-span-4 bg-white rounded-3xl p-6 shadow-soft border border-black/[0.03] flex flex-col justify-between" style="animation-delay:330ms">
           <div class="flex items-center justify-between">
             <div>
               <h2 class="text-base font-bold text-zinc-900">Security Health</h2>
@@ -564,7 +571,7 @@ router.get('/', requireAuth, async (req, res) => {
         </article>
 
         <!-- Quick Stats -->
-        <article class="md:col-span-6 lg:col-span-3 bg-white rounded-3xl p-6 shadow-soft border border-black/[0.03] flex flex-col justify-between">
+        <article class="rise md:col-span-6 lg:col-span-3 bg-white rounded-3xl p-6 shadow-soft border border-black/[0.03] flex flex-col justify-between" style="animation-delay:440ms">
           <div>
             <h2 class="text-base font-bold text-zinc-900">Activity</h2>
             <span class="text-xs text-zinc-400 font-medium">All-time summary</span>
@@ -587,7 +594,7 @@ router.get('/', requireAuth, async (req, res) => {
       </section>
 
       <!-- Active Escrows -->
-      <section id="active" class="space-y-4">
+      <section id="active" class="rise space-y-4" style="animation-delay:550ms">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <h2 class="text-lg font-bold text-zinc-900">Active Escrow In Process</h2>
@@ -614,7 +621,7 @@ router.get('/', requireAuth, async (req, res) => {
       </section>
 
       <!-- Transactions Table -->
-      <section id="transactions" class="bg-white rounded-3xl p-6 shadow-soft border border-black/[0.03] space-y-4">
+      <section id="transactions" class="rise bg-white rounded-3xl p-6 shadow-soft border border-black/[0.03] space-y-4" style="animation-delay:660ms">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-zinc-100">
           <div>
             <h2 class="text-lg font-bold text-zinc-900 tracking-tight">Transactions &amp; Settlement Ledger</h2>
