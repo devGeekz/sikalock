@@ -6,8 +6,11 @@ async function sendSMS(to, message) {
     console.log(`[SMS dev mode] To: ${to} | ${message}`);
     return true;
   }
+  const host = config.at.username === 'sandbox'
+    ? 'https://api.sandbox.africastalking.com/version1/messaging'
+    : 'https://api.africastalking.com/version1/messaging';
   try {
-    const res = await fetch('https://api.africastalking.com/version1/messaging', {
+    const res = await fetch(host, {
       method: 'POST',
       headers: {
         apiKey: config.at.apiKey,
@@ -19,6 +22,8 @@ async function sendSMS(to, message) {
         message,
       }),
     });
+    const body = await res.text();
+    if (!res.ok) console.error(`SMS API ${res.status}: ${body}`);
     return res.ok;
   } catch (err) {
     console.error('SMS error:', err);
