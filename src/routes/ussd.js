@@ -184,7 +184,7 @@ async function handleNewTxConfirm(session, phone, input) {
       });
 
       // MoMo accepted the request — update status to locked
-      await escrow.updateTransactionStatus(tx.id, 'locked', momoResult.financialTransactionId || null);
+      await escrow.updateTransactionStatus(tx.id, 'locked', momoResult || null);
       await escrow.addLedgerEntry(tx.id, 'fund_locked');
 
       notify(session.data.sellerPhone, `SikaLock: New escrow of GHS ${amount} from buyer. ID: ${tx.id}. Funds are locked.`);
@@ -272,7 +272,7 @@ async function handleConfirmDelivery(session, phone, txId) {
       payeeNote: `SikaLock escrow release - Transaction ${tx.id}`,
     });
 
-    await escrow.updateTransactionStatus(tx.id, 'released', momoResult.financialTransactionId || null);
+    await escrow.updateTransactionStatus(tx.id, 'released', momoResult || null);
     await escrow.addLedgerEntry(tx.id, 'buyer_confirmed');
     await escrow.addLedgerEntry(tx.id, 'funds_released');
 

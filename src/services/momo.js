@@ -1,6 +1,9 @@
 const momo = require('mtn-momo');
 const config = require('../config');
 
+// ponytail: MoMo sandbox rejects GHS — test in EUR, live keeps GHS
+const currency = config.momo.environment === 'sandbox' ? 'EUR' : 'GHS';
+
 let collections = null;
 let disbursements = null;
 
@@ -35,7 +38,7 @@ function getDisbursements() {
 async function requestToPay({ amount, phone, externalId, payerMessage }) {
   return getCollections().requestToPay({
     amount: String(amount),
-    currency: 'GHS',
+    currency,
     externalId,
     payer: { partyIdType: 'MSISDN', partyId: phone },
     payerMessage: payerMessage || 'SikaLock escrow payment',
@@ -50,7 +53,7 @@ async function getPaymentStatus(referenceId) {
 async function transfer({ amount, phone, externalId, payeeNote }) {
   return getDisbursements().transfer({
     amount: String(amount),
-    currency: 'GHS',
+    currency,
     externalId,
     payee: { partyIdType: 'MSISDN', partyId: phone },
     payeeNote: payeeNote || 'SikaLock escrow release',
