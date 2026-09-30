@@ -194,8 +194,8 @@ function layout(title, body, user) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>${HEAD}<title>${esc(title)} | SikaLock</title></head>
-<body class="text-zinc-900 antialiased p-3 sm:p-6 lg:p-8 flex items-center justify-center">
-<div class="w-full max-w-[1440px] bg-[#EFEFEF]/70 backdrop-blur-2xl p-3 sm:p-5 lg:p-6 rounded-[2.5rem] border border-white/60 shadow-2xl flex flex-col lg:flex-row gap-6">
+<body class="text-zinc-900 antialiased">
+<div class="w-full flex flex-col lg:flex-row gap-6 p-3 sm:p-6 lg:p-8">
   <div id="sb-backdrop" onclick="toggleSidebar()"></div>
   ${sidebar(user)}
   <main class="flex-1 flex flex-col gap-6 overflow-hidden">
