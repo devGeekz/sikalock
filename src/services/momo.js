@@ -3,6 +3,8 @@ const config = require('../config');
 
 // ponytail: MoMo sandbox rejects GHS — test in EUR, live keeps GHS
 const currency = config.momo.environment === 'sandbox' ? 'EUR' : 'GHS';
+// ponytail: without this MTN never calls back and /webhook/momo is dead code
+const callbackUrl = `${config.momo.callbackHost || 'https://localhost:3000'}/webhook/momo`;
 
 let collections = null;
 let disbursements = null;
@@ -40,6 +42,7 @@ async function requestToPay({ amount, phone, externalId, payerMessage }) {
     amount: String(amount),
     currency,
     externalId,
+    callbackUrl,
     payer: { partyIdType: 'MSISDN', partyId: phone },
     payerMessage: payerMessage || 'SikaLock escrow payment',
     payeeNote: 'Escrow lock',
@@ -55,6 +58,7 @@ async function transfer({ amount, phone, externalId, payeeNote }) {
     amount: String(amount),
     currency,
     externalId,
+    callbackUrl,
     payee: { partyIdType: 'MSISDN', partyId: phone },
     payeeNote: payeeNote || 'SikaLock escrow release',
     payerMessage: 'Funds released',

@@ -45,7 +45,9 @@ async function initDb() {
   // Enum migrations (CREATE TYPE won't add values to existing enums)
   const enumAdditions = [
     `ALTER TYPE tx_status ADD VALUE IF NOT EXISTS 'refunded'`,
+    `ALTER TYPE tx_status ADD VALUE IF NOT EXISTS 'failed'`,
     `ALTER TYPE ledger_action ADD VALUE IF NOT EXISTS 'funds_refunded'`,
+    `ALTER TYPE ledger_action ADD VALUE IF NOT EXISTS 'payment_failed'`,
   ];
   for (const sql of enumAdditions) {
     try { await pool.query(sql); } catch (e) { /* value may already exist */ }

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const escrow = require('../services/escrow');
+const sms = require('../services/sms');
 
 // MoMo payment notification webhook
 router.post('/momo', async (req, res) => {
@@ -18,17 +19,17 @@ router.post('/momo', async (req, res) => {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    // Dedup: skip if already locked
-    if (tx.status === 'locked') {
-      return res.status(200).json({ message: 'Already processed' });
-    }
-
+    // Dedup: a repeat SUCCESSFUL callback changes nothing
     if (status === 'SUCCESSFUL') {
+      if (tx.status === 'locked') {
+        return res.status(200).json({ message: 'Already processed' });
+      }
       await escrow.updateTransactionStatus(tx.id, 'locked', financialTransactionId);
       await escrow.addLedgerEntry(tx.id, 'fund_locked');
       console.log(`Transaction ${tx.id} funds locked`);
     } else {
       await escrow.updateTransactionStatus(tx.id, 'pending', null);
+      sms.sendSMS(tx.buyer_phone, `SikaLock: Payment for transaction ${tx.id} failed. No money was taken. Dial *384# to try again.`).catch(() => {});
       console.log(`Transaction ${tx.id} payment failed`);
     }
 

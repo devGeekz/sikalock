@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const escrow = require('../services/escrow');
+const momo = require('../services/momo');
 const sms = require('../services/sms');
 const config = require('../config');
 const { normalizePhone } = require('./ussd');
@@ -827,13 +828,27 @@ router.post('/disputes/:id/resolve', requireAuth, requireAdmin, async (req, res)
     if (tx.status !== 'disputed') return res.status(400).send('Not a disputed transaction');
 
     if (action === 'release') {
-      await escrow.updateTransactionStatus(tx.id, 'released', null);
+      const momoRef = await momo.transfer({
+        amount: tx.amount,
+        phone: tx.seller_phone,
+        externalId: tx.id,
+        payeeNote: `SikaLock dispute ${tx.id} resolved: release to seller`,
+      }).catch(err => { console.error('Dispute release transfer failed:', err); return null; });
+      if (!momoRef) return res.status(500).send('Transfer failed. Funds not moved — try again.');
+      await escrow.updateTransactionStatus(tx.id, 'released', momoRef || null);
       await escrow.addLedgerEntry(tx.id, 'funds_released', 'Dispute resolved: released to seller');
       console.log(`Dispute resolved: ${tx.id} released to seller`);
       sms.sendSMS(tx.seller_phone, `SikaLock: Dispute resolved in your favor. GHS ${tx.amount} released to you. ID: ${tx.id}`).catch(() => {});
       sms.sendSMS(tx.buyer_phone, `SikaLock: Dispute on ${tx.id} resolved. Funds released to seller.`).catch(() => {});
     } else if (action === 'refund') {
-      await escrow.updateTransactionStatus(tx.id, 'refunded', null);
+      const momoRef = await momo.transfer({
+        amount: tx.amount,
+        phone: tx.buyer_phone,
+        externalId: tx.id,
+        payeeNote: `SikaLock dispute ${tx.id} resolved: refund to buyer`,
+      }).catch(err => { console.error('Dispute refund transfer failed:', err); return null; });
+      if (!momoRef) return res.status(500).send('Refund failed. Funds not moved — try again.');
+      await escrow.updateTransactionStatus(tx.id, 'refunded', momoRef || null);
       await escrow.addLedgerEntry(tx.id, 'funds_refunded', 'Dispute resolved: refunded to buyer');
       console.log(`Dispute resolved: ${tx.id} refunded to buyer`);
       sms.sendSMS(tx.buyer_phone, `SikaLock: Dispute resolved in your favor. GHS ${tx.amount} refunded to you. ID: ${tx.id}`).catch(() => {});

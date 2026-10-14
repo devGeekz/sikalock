@@ -25,6 +25,8 @@ async function createTransaction(buyerId, sellerId, amount) {
 }
 
 async function getTransaction(txId) {
+  // ponytail: one guard here beats one in every caller — bad IDs read as "not found"
+  if (!txId || !/^[0-9a-f-]{36}$/i.test(String(txId))) return null;
   const result = await pool.query(
     `SELECT t.*,
             b.phone as buyer_phone, b.name as buyer_name,

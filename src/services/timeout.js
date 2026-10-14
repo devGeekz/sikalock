@@ -1,4 +1,5 @@
 const pool = require('../db/pool');
+const momo = require('./momo');
 const sms = require('./sms');
 
 const SHIP_TIMEOUT_DAYS = 7;
@@ -44,21 +45,51 @@ async function checkShipTimeouts() {
 
 async function checkDisputeTimeouts() {
   const result = await pool.query(
-    `UPDATE transactions SET status = 'refunded', updated_at = NOW()
+    `SELECT id, buyer_id, seller_id, amount, momo_reference FROM transactions
      WHERE status = 'disputed'
-     AND updated_at < NOW() - INTERVAL '${DISPUTE_TIMEOUT_DAYS} days'
-     RETURNING id, buyer_id, seller_id, amount, momo_reference`
+     AND updated_at < NOW() - INTERVAL '${DISPUTE_TIMEOUT_DAYS} days'`
+  );
+
+  let refunded = 0;
+  for (const tx of result.rows) {
+    const phones = await getPartyPhones(tx.id);
+    // ponytail: transfer first — if MoMo fails we leave it disputed and retry next run
+    const momoRef = await momo.transfer({
+      amount: tx.amount,
+      phone: phones.buyer_phone,
+      externalId: tx.id,
+      payeeNote: `SikaLock auto-refund: dispute ${tx.id} unresolved`,
+    }).catch(err => { console.error(`Auto-refund failed for ${tx.id}:`, err); return null; });
+    if (!momoRef) continue;
+    await pool.query(`UPDATE transactions SET status = 'refunded', momo_reference = $2, updated_at = NOW() WHERE id = $1`, [tx.id, momoRef || null]);
+    await pool.query(
+      'INSERT INTO escrow_ledger (transaction_id, action) VALUES ($1, $2)',
+      [tx.id, 'funds_refunded']
+    );
+    if (phones.buyer_phone) notify(phones.buyer_phone, `SikaLock: Dispute not resolved in ${DISPUTE_TIMEOUT_DAYS} days. GHS ${tx.amount} refunded to you. ID: ${tx.id}`);
+    if (phones.seller_phone) notify(phones.seller_phone, `SikaLock: Dispute on ${tx.id} expired. Funds refunded to buyer.`);
+    console.log(`Auto-refund: transaction ${tx.id} — dispute not resolved within ${DISPUTE_TIMEOUT_DAYS} days`);
+    refunded++;
+  }
+
+  return refunded;
+}
+
+async function checkPendingTimeouts() {
+  // ponytail: pending means no money moved, so this is a safe terminal state
+  const result = await pool.query(
+    `UPDATE transactions SET status = 'failed', updated_at = NOW()
+     WHERE status = 'pending'
+     AND updated_at < NOW() - INTERVAL '1 day'
+     RETURNING id`
   );
 
   for (const tx of result.rows) {
     await pool.query(
       'INSERT INTO escrow_ledger (transaction_id, action) VALUES ($1, $2)',
-      [tx.id, 'funds_refunded']
+      [tx.id, 'payment_failed']
     );
-    const phones = await getPartyPhones(tx.id);
-    if (phones.buyer_phone) notify(phones.buyer_phone, `SikaLock: Dispute not resolved in ${DISPUTE_TIMEOUT_DAYS} days. GHS ${tx.amount} refunded to you. ID: ${tx.id}`);
-    if (phones.seller_phone) notify(phones.seller_phone, `SikaLock: Dispute on ${tx.id} expired. Funds refunded to buyer.`);
-    console.log(`Auto-refund: transaction ${tx.id} — dispute not resolved within ${DISPUTE_TIMEOUT_DAYS} days`);
+    console.log(`Expired pending: transaction ${tx.id} — payment never completed`);
   }
 
   return result.rows.length;
@@ -68,8 +99,9 @@ async function runTimeoutChecks() {
   try {
     const disputes = await checkShipTimeouts();
     const refunds = await checkDisputeTimeouts();
-    if (disputes > 0 || refunds > 0) {
-      console.log(`Timeout check: ${disputes} auto-disputes, ${refunds} auto-refunds`);
+    const expired = await checkPendingTimeouts();
+    if (disputes > 0 || refunds > 0 || expired > 0) {
+      console.log(`Timeout check: ${disputes} auto-disputes, ${refunds} auto-refunds, ${expired} expired-pending`);
     }
   } catch (err) {
     console.error('Timeout check error:', err);
